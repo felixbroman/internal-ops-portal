@@ -93,3 +93,26 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 }
+
+func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	authUser, ok := FromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := h.Users.GetByID(r.Context(), authUser.ID)
+	if err != nil {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]any{
+		"user": map[string]string{
+			"id":    user.ID,
+			"name":  user.Name,
+			"email": user.Email,
+			"role":  user.Role,
+		},
+	})
+}

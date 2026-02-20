@@ -30,6 +30,9 @@ func main() {
 	mux.HandleFunc("/api/auth/signup", authHandler.Signup)
 	mux.HandleFunc("/api/auth/login", authHandler.Login)
 
+	protected := auth.Middleware(http.HandlerFunc(authHandler.Me))
+	mux.Handle("/api/auth/me", protected)
+
 	log.Println("Server running on :8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
