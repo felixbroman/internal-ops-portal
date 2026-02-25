@@ -69,11 +69,16 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   60 * 60 * 24,
 	})
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "logged in",
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(MeResponse{
+		User: UserResponse{
+			ID:        user.ID,
+			Name:      user.Name,
+			Email:     user.Email,
+			Role:      user.Role,
+			ManagerID: user.ManagerID,
+		},
 	})
-
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -113,9 +118,15 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   60 * 60 * 24,
 	})
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "logged in",
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(MeResponse{
+		User: UserResponse{
+			ID:        user.ID,
+			Name:      user.Name,
+			Email:     user.Email,
+			Role:      user.Role,
+			ManagerID: user.ManagerID,
+		},
 	})
 }
 
@@ -133,12 +144,28 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]any{
-		"user": map[string]string{
-			"id":    user.ID,
-			"name":  user.Name,
-			"email": user.Email,
-			"role":  user.Role,
+	json.NewEncoder(w).Encode(MeResponse{
+		User: UserResponse{
+			ID:        user.ID,
+			Name:      user.Name,
+			Email:     user.Email,
+			Role:      user.Role,
+			ManagerID: user.ManagerID,
 		},
 	})
+}
+
+// POST /api/auth/logout
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		MaxAge:   -1,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	w.WriteHeader(http.StatusOK)
 }
