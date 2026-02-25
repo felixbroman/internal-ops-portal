@@ -17,7 +17,13 @@ func NewHandler(usersRepo users.Repository) *Handler {
 	return &Handler{Users: usersRepo}
 }
 
+// POST /api/auth/signup
 func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	var req struct {
 		Name     string `json:"name"`
 		Email    string `json:"email"`
@@ -47,17 +53,27 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, _ := GenerateJWT(user.ID, user.Role, os.Getenv("JWT_SECRET"))
+	token, err := GenerateJWT(user.ID, user.Role, os.Getenv("JWT_SECRET"))
+	if err != nil {
+		http.Error(w, "failed to generate token", http.StatusInternalServerError)
+		return
+	}
 
-	json.NewEncoder(w).Encode(map[string]any{
-		"token": token,
-		"user": map[string]string{
-			"id":    user.ID,
-			"name":  user.Name,
-			"email": user.Email,
-			"role":  user.Role,
-		},
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    token,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		MaxAge:   60 * 60 * 24,
 	})
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "logged in",
+	})
+
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -81,19 +97,29 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 	}
 
-	token, _ := GenerateJWT(user.ID, user.Role, os.Getenv("JWT_SECRET"))
+	token, err := GenerateJWT(user.ID, user.Role, os.Getenv("JWT_SECRET"))
+	if err != nil {
+		http.Error(w, "failed to generate token", http.StatusInternalServerError)
+		return
+	}
 
-	json.NewEncoder(w).Encode(map[string]any{
-		"token": token,
-		"user": map[string]string{
-			"id":    user.ID,
-			"name":  user.Name,
-			"email": user.Email,
-			"role":  user.Role,
-		},
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    token,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		MaxAge:   60 * 60 * 24,
+	})
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "logged in",
 	})
 }
 
+// GET /api/auth/me
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	authUser, ok := FromContext(r.Context())
 	if !ok {
