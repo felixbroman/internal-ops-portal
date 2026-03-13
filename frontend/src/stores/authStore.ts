@@ -1,13 +1,12 @@
 import { defineStore } from "pinia";
-import api from "@/services/api";
 import { ref } from "vue";
 import type { LoginCreds, SignupCreds, User } from "@/types/auth";
 import { signup, login, getMe } from "@/services/auth.service";
 
-export const useAuthStore = defineStore("auth", async () => {
+export const useAuthStore = defineStore("auth", () => {
     const me = ref<User>();
 
-    async function Signup(cred: SignupCreds) {
+    async function signupAction(cred: SignupCreds) {
         try {
             const { user } = await signup(cred)
             me.value = user
@@ -16,16 +15,20 @@ export const useAuthStore = defineStore("auth", async () => {
         }
     }
 
-    async function Login(cred:LoginCreds) {
+    async function loginAction(cred:LoginCreds) {
         try {
             const { user } = await login(cred)
             me.value = user
         } catch (err: any) {
-            console.error('failed to login', err?.response?.data || err?.message)
+            console.error('error in loginAction', err)
+            if (err.response?.status === 401) {
+                throw new Error(err.response?.message)
+            }
         }
     }
 
-    async function Me() {
+    async function meAction() {
+        if(me.value) return;
         try {
             const { user } = await getMe()
             me.value = user
@@ -36,7 +39,8 @@ export const useAuthStore = defineStore("auth", async () => {
 
     return { 
         me,
-        Signup,
-        Login,
+        meAction,
+        signupAction,
+        loginAction,
     }
 })

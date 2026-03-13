@@ -18,6 +18,6 @@ export type SignupCreds = {
 }
 
 export type LoginCreds = {
-    emal: string,
+    email: string,
     password: string,
 }

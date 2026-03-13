@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme {
+  --dark-base: rgba(49, 54, 56, 1);
+  --background: rgba(248, 248, 248, 1);
+  --card: rgba(255, 255, 255, 1);
+  --border: rgba(226, 226, 226, 1);
+
+  --primary-text: rgba(20, 20, 20, 1);
+  --secondary-text: rgba(137, 137, 137, 1);
+  --accent: rgba(246, 125, 49, 1);
+  --accent-hover: rgba(246, 125, 49, 0.85);
+
+  --success: rgba(93, 162, 113, 1);
+  --warning: rgba(245, 158, 11, 1);
+  --danger: rgba(239, 68, 68, 1);
+}
