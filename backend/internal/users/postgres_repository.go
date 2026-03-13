@@ -67,3 +67,27 @@ func (r *PostgresRepository) GetByEmail(ctx context.Context, email string) (*Use
 
 	return &u, nil
 }
+
+func (r *PostgresRepository) GetByID(ctx context.Context, id string) (*User, error) {
+	const query = `
+		SELECT id, name, email, password_hash, role, manager_id, created_at
+		FROM users
+		WHERE id = $1
+	`
+
+	var u User
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&u.ID,
+		&u.Name,
+		&u.Email,
+		&u.PasswordHash,
+		&u.ManagerID,
+		&u.CreatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &u, nil
+}
