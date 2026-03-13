@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"internal-ops-portal/internal/auth"
 	"internal-ops-portal/internal/db"
@@ -30,6 +31,12 @@ func main() {
 	mux.HandleFunc("/api/auth/signup", authHandler.Signup)
 	mux.HandleFunc("/api/auth/login", authHandler.Login)
 
+	fs := http.FileServer(http.Dir("./frontend/dist"))
+	http.Handle("/", fs)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 	log.Println("Server running on :8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(http.ListenAndServe(":"+port, mux))
 }
