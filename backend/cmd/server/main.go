@@ -78,6 +78,6 @@ func main() {
 	fs := http.FileServer(http.Dir("./frontend/dist"))
 	r.Handle("/*", fs)
 
-	log.Println("Server running on " + port)
+	log.Printf("Server running on :%s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
