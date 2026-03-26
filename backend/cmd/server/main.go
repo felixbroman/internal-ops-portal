@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+
 	"internal-ops-portal/internal/auth"
 	"internal-ops-portal/internal/db"
 	"internal-ops-portal/internal/requests"
@@ -19,72 +22,62 @@ func main() {
 	database := db.Connect()
 	defer database.Close()
 
-	mux := http.NewServeMux()
+	r := chi.NewRouter()
 
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
+	// health
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
+
 	// AUTH DOMAIN
-	userRepo := users.NewPostpresRepository(database)
+	userRepo := users.NewPostgresRepository(database)
 	authHandler := auth.NewHandler(userRepo)
 
-	mux.HandleFunc("/api/auth/signup", authHandler.Signup)
-	mux.HandleFunc("/api/auth/login", authHandler.Login)
+	r.Route("/api/auth", func(authRouter chi.Router) {
+		authRouter.Post("/signup", authHandler.Signup)
+		authRouter.Post("/login", authHandler.Login)
 
-	fs := http.FileServer(http.Dir("./frontend/dist"))
-	http.Handle("/", fs)
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	protected := auth.Middleware(http.HandlerFunc(authHandler.Me))
-	mux.Handle("/api/auth/me", protected)
+		authRouter.Group(func(protected chi.Router) {
+			protected.Use(auth.Middleware)
+			protected.Get("/me", authHandler.Me)
+		})
+	})
 
 	// REQUESTS DOMAIN
 	requestRepo := requests.NewPostgresRepository(database)
 	reqHandler := requests.NewHandler(requestRepo)
 
-	// employee: create request
-	mux.Handle(
-		"/api/requests",
-		auth.Middleware(
-			auth.RequireRole("employee")(
-				http.HandlerFunc(reqHandler.Create),
-			),
-		),
-	)
+	r.Route("/api/requests", func(req chi.Router) {
+		req.Group(func(protected chi.Router) {
+			//employee
+			protected.With(auth.RequireRole("employee")).
+				Post("", reqHandler.Create)
 
-	// employee get own requests
-	mux.Handle(
-		"/api/requests/mine",
-		auth.Middleware(
-			auth.RequireRole("employee")(
-				http.HandlerFunc(reqHandler.Mine),
-			),
-		),
-	)
+			protected.With(auth.RequireRole("employee")).
+				Get("/mine", reqHandler.Mine)
 
-	// manager/admin: list all requests
-	mux.Handle(
-		"/api/requests",
-		auth.Middleware(
-			auth.RequireAnyRole("manager", "admin")(
-				http.HandlerFunc(reqHandler.List),
-			),
-		),
-	)
+			// manager/admin
+			protected.With(auth.RequireAnyRole("manager", "admin")).
+				Get("", reqHandler.List)
 
-	// manager/admin: approve/reject
-	mux.Handle(
-		"/api/requests/",
-		auth.Middleware(
-			auth.RequireAnyRole("manager", "admin")(
-				http.HandlerFunc(reqHandler.UpdateDecision),
-			),
-		),
-	)
+			protected.With(auth.RequireAnyRole("manager", "admin")).
+				Patch("/{id}", reqHandler.UpdateDecision)
+		})
+	})
 
-	log.Println("Server running on :8080")
-	log.Fatal(http.ListenAndServe(":"+port, mux))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	// frontend
+	fs := http.FileServer(http.Dir("./frontend/dist"))
+	r.Handle("/*", fs)
+
+	log.Println("Server running on " + port)
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }
